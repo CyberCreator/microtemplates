@@ -56,7 +56,7 @@ class TemplateSyntaxError(TemplateError):
 def eval_expression(expr):
     try:
         return 'literal', ast.literal_eval(expr)
-    except ValueError, SyntaxError:
+    except ValueError or SyntaxError:
         return 'name', expr
 
 
@@ -64,9 +64,15 @@ def resolve(name, context):
     if name.startswith('..'):
         context = context.get('..', {})
         name = name[2:]
+
     try:
         for tok in name.split('.'):
-            context = context[tok]
+
+            if isinstance(context, dict):
+                context = context[tok]
+            else:
+                context = getattr(context, f'{tok}')
+
         return context
     except KeyError:
         raise TemplateContextError(name)
@@ -204,7 +210,7 @@ class _Call(_Node):
             bits = WHITESPACE.split(fragment)
             self.callable = bits[1]
             self.args, self.kwargs = self._parse_params(bits[2:])
-        except ValueError, IndexError:
+        except ValueError or IndexError:
             raise TemplateSyntaxError(fragment)
 
     def _parse_params(self, params):
